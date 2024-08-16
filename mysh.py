@@ -1,5 +1,6 @@
 import signal
 import os
+import sys
 import shlex
 from myErrors import *
 
@@ -14,21 +15,22 @@ def setup_signals() -> None:
     signal.signal(signal.SIGTTOU, signal.SIG_IGN)
 
 
-def parseInput(data: str) -> (str, [str], [str]):
+def parseInput(data: shlex) -> (str, [str], [str]):
     """returns (command, args, flags)"""
-    data = data.split()
-    command, data = data[0].lower(), data[1:]
 
-    args = []
-    flags = []
+    tokens = []
+    token = ""
 
-    for item in data:
-        if item.startswith("-"):
-            flags.append(item)
-        else: 
-            args.append(item)
+    while True:
+        token = data.get_token()
+        if (token == None):
+            break
+        tokens.append(token)
 
-    return command, args, flags
+    
+    command, args = tokens[0].lower(), tokens[1:]
+
+    return command, args
 
 
 def main() -> None:
@@ -44,6 +46,7 @@ def main() -> None:
         try:
             loop(prompt)
         except KeyboardInterrupt:
+            print()
             continue
         except myExit as e:
             os._exit(e.code)
@@ -55,7 +58,14 @@ def main() -> None:
 def loop(prompt):
     while True:
         data = input(f"{prompt} ")
-        command, args, flags = parseInput(data)
+        tokens = shlex.shlex(data, posix = True)
+        tokens.escapedquotes = "'\""
+
+        try:
+            command, args = parseInput(tokens)
+        except ValueError as e:
+            sys.stderr.write("mysh: syntax error: unterminated quote\n")
+            continue
 
         if command == "exit":
             raise myExit(0)
