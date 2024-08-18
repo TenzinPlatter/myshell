@@ -32,6 +32,9 @@ def parseInput(data: shlex) -> (str, [str], [str]):
 
     return command, args
 
+def run_command(command, args):
+
+
 
 def main() -> None:
     # DO NOT REMOVE THIS FUNCTION CALL!
