@@ -30,9 +30,6 @@ def run_command(args):
     raise errorMsg(f"mysh: program not found: {program}\n")
 
 def handle_child_process(child_pid):
-    def handle_interrupt():
-        print("Hello")
-        return
     try:
         os.setpgid(child_pid, child_pid)
     except PermissionError:
@@ -50,12 +47,19 @@ def run_executable(args):
     child_pid = os.fork()
 
     if child_pid > 0:
-        handle_child_process(child_pid)
+        # handle_child_process(child_pid)
+        try:
+            os.wait()
+        except KeyboardInterrupt:
+            print()
         return
 
     elif child_pid == 0:
         os.setpgid(0, 0)
         program = args[0]
-        signal.signal(signal.SIGINT, handle_interrupt)
-        os.execv(program, args)
+        try:
+            os.execv(program, args)
+        except Exception as e:
+            print("error")
+            return
 
