@@ -1,17 +1,15 @@
 from myErrors import errorMsg
 import signal
 import os
+import builtin
 
 def run_command(args):
     program = args[0]
-    builtins = {
-            "exit":
-            "var"
-            }
 
-    if program in builtins:
-        #implement once builtins are implemented
+    # returns true if program is a builtin else false and continues
+    if builtin.handle(args) == True:
         return
+
 
     if "/" in program:
         if not os.path.exists(program):
@@ -27,7 +25,7 @@ def run_command(args):
         run_executable(args)
         return
 
-    raise errorMsg(f"mysh: program not found: {program}\n")
+    raise errorMsg(f"mysh: command not found: {program}\n")
 
 def handle_child_process(child_pid):
     #INFO: Unused, something about this in the specifications, but can't get
@@ -56,6 +54,5 @@ def run_executable(args):
     elif child_pid == 0:
         os.setpgid(0, 0)
         program = args[0]
-        signal.signal(signal.SIGINT, handle_interrupt)
         os.execv(program, args)
 
