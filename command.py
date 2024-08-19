@@ -30,9 +30,9 @@ def run_command(args):
     raise errorMsg(f"mysh: program not found: {program}\n")
 
 def handle_child_process(child_pid):
-    def handle_interrupt():
-        print("Hello")
-        return
+    #INFO: Unused, something about this in the specifications, but can't get
+    # <C-c> to print new line when used on a child process when adjusting
+    # permissions with this
     try:
         os.setpgid(child_pid, child_pid)
     except PermissionError:
