@@ -3,6 +3,7 @@ import os
 import sys
 import shlex
 from myErrors import *
+from command import run_command
 
 
 # DO NOT REMOVE THIS FUNCTION!
@@ -14,33 +15,13 @@ def setup_signals() -> None:
     """
     signal.signal(signal.SIGTTOU, signal.SIG_IGN)
 
-
-def parseInput(data: shlex) -> (str, [str], [str]):
-    """returns (command, args, flags)"""
-
-    tokens = []
-    token = ""
-
-    while True:
-        token = data.get_token()
-        if (token == None):
-            break
-        tokens.append(token)
-
-    
-    command, args = tokens[0].lower(), tokens[1:]
-
-    return command, args
-
-def run_command(command, args):
+# def run_command(command, args):
 
 
 
 def main() -> None:
     # DO NOT REMOVE THIS FUNCTION CALL!
     setup_signals()
-
-
 
     if not (prompt := os.environ.get("PROMPT")):
         prompt = ">>"
@@ -57,18 +38,30 @@ def main() -> None:
             #TODO: not completely sure if this is right
             os._exit(0)
 
+def get_tokens_obj(prompt):
+    data = input(f"{prompt} ")
+    tokens = shlex.shlex(data, posix = True)
+    tokens.escapedquotes = "'\""
+    tokens.wordchars += "-./"
+    return tokens
 
 def loop(prompt):
     while True:
-        data = input(f"{prompt} ")
-        tokens = shlex.shlex(data, posix = True)
-        tokens.escapedquotes = "'\""
-
+        tokens_obj = get_tokens_obj(prompt)
         try:
-            command, args = parseInput(tokens)
+            args = [token for token in tokens_obj]
+            command = args[0]
+            if (len(args) < 1):
+                continue
+            print(args)
+            run_command(args)
+
         except ValueError as e:
             sys.stderr.write("mysh: syntax error: unterminated quote\n")
             continue
+
+        except errorMsg as e:
+            sys.stderr.write(e.msg)
 
         if command == "exit":
             raise myExit(0)
