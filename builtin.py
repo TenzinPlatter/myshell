@@ -18,8 +18,6 @@ def handle(args):
             return False
     return True
 
-
-
 def var(args):
     pass 
 
@@ -27,7 +25,21 @@ def exit(args):
     os._exit(0)
 
 def pwd(args):
-    print(vars.get("cwd"))
+    if len(args) == 0:
+        print(vars.get("cwd"))
+        return
+
+    if len(args) == 1 and args[0] == "-P":
+        path = os.path.realpath(vars.get("cwd"))
+        print(path)
+        return
+
+    if args[0].startswith("-"):
+        raise errorMsg(f"pwd: invalid option: {args[0][:2]}\n")
+    else:
+        raise errorMsg(f"pwd: not expecting any arguments\n")
+         
+
 
 def cd(args):
     if len(args) == 0:
@@ -42,13 +54,16 @@ def cd(args):
     # sets path initially as if it is a relative path, then if not it is overwritten
     new_path = os.path.join(cwd, path)
 
+    if path == "~":
+        new_path = os.path.expanduser("~")
+
     # errors
     if not os.path.exists(new_path):
-        raise errorMsg(f"cd: No such file or directory: {path}")
+        raise errorMsg(f"cd: no such file or directory: {path}\n")
     if not os.path.isdir(new_path):
-        raise errorMsg(f"cd: Not a directory: {path}")
+        raise errorMsg(f"cd: not a directory: {path}\n")
     if not os.access(new_path, os.X_OK):
-        raise errorMsg(f"cd: Permission denied: {path}")
+        raise errorMsg(f"cd: permission denied: {path}\n")
 
     if path.startswith("/"):
         new_path = path
@@ -63,10 +78,10 @@ def cd(args):
             else:
                 new_path = get_parent_path(cwd)
         
-        elif os.path.islink(new_path):
-            pass
 
-
+        # don't think this is needed
+        # elif os.path.islink(new_path):
+        #     new_path = os.path.realpath(new_path)
 
     vars.set("cwd", new_path)
 

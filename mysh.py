@@ -15,9 +15,7 @@ def setup_signals() -> None:
     """
     signal.signal(signal.SIGTTOU, signal.SIG_IGN)
 
-def get_tokens_obj():
-    prompt = vars.get("prompt")
-    data = input(f"{prompt} ")
+def get_tokens_obj(data):
     tokens = shlex.shlex(data, posix = True)
     tokens.escapedquotes = "'\""
     tokens.wordchars += "-./"
@@ -49,8 +47,10 @@ def main() -> None:
 
 def loop():
     while True:
+        prompt = vars.get("prompt")
+        data = input(f"{prompt} ")
         try:
-            tokens_obj = get_tokens_obj()
+            tokens_obj = get_tokens_obj(data)
             args = get_tokens_list(tokens_obj)
             if (len(args) < 1):
                 continue
