@@ -10,15 +10,15 @@ def init():
     if not (path := os.environ.get("PATH")):
         path = os.defpath
 
-    set("path", path)
-    set("prompt", prompt)
-    set("cwd", os.getcwd())
+    set_var("path", path)
+    set_var("prompt", prompt)
+    set_var("cwd", os.getcwd())
 
-def set(name, val):
+def set_var(name, val):
     vars[name] = val
 
-def get(name):
+def get_var(name):
     if name not in vars.keys():
-        return None
+        return ""
 
     return vars[name]

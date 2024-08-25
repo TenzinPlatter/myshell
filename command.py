@@ -2,30 +2,48 @@ from myErrors import errorMsg
 import signal
 import os
 import builtin
+import settings
+
+# duped to prevent a future import loop
+def search_path_for_executable(program):
+    locs = settings.get_var("path").split(os.pathsep)
+    for loc in locs:
+        exec_path = os.path.join(loc, program)
+        if os.path.isfile(exec_path):
+            return exec_path
+    return None
 
 def run_command(args):
     program = args[0]
 
     # returns true if program is a builtin else false and continues
-    if builtin.handle(args) == True:
-        return
+    if builtin.is_builtin(program):
+        return builtin.handle(args)
 
+    if (path := search_path_for_executable(program)) == None:
+        print(path)
+        raise errorMsg(f"mysh: no such file or directory: {program}")
+    else:
+        args[0] = path
+        if os.access(path, os.X_OK):
+            run_executable(args)
+            return
+        else:
+            raise errorMsg(f"mysh: permission denied: {path}")
 
     if "/" in program:
-        if not os.path.exists(program):
-            raise errorMsg(f"mysh: no such file or directory: {program}\n")
 
         if os.path.isdir(program):
-            raise errorMsg(f"mysh: is a directory: {program}\n")
+            raise errorMsg(f"mysh: is a directory: {program}")
 
         # checks if user has execute permissions
         if not os.access(program, os.X_OK):
-            raise errorMsg(f"mysh: permission denied: {program}\n")
+            raise errorMsg(f"mysh: permission denied: {program}")
 
         run_executable(args)
-        return
+        return None
 
-    raise errorMsg(f"mysh: command not found: {program}\n")
+    raise errorMsg(f"mysh: command not found: {program}")
 
 def handle_child_process(child_pid):
     #INFO: Unused, something about this in the specifications, but can't get
