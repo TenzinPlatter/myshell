@@ -2,9 +2,101 @@
 Module to handle parsing for the shell.
 """
 import re
+import shlex
+import settings
+from my_errors import ErrorMsg
 
+def filter_vars(data) -> str:
+    """
+    Filters out variables defined by ${<name>} syntax, and replaces them with their
+    value
+    Returns new string
+    """
+    indexes = get_var_indexes(data)
+    for index_pair in indexes:
+        var_name = data[index_pair[0] + 2 : index_pair[1]]
 
-# You are free to add functions or modify this module as you please.
+        if not var_name.replace("_", "").isalnum():
+            raise ErrorMsg(f"mysh: syntax error: invalid characters for variable {var_name}")
+
+        if settings.var_exists(var_name):
+            var_val = settings.get_var(var_name)
+        else:
+            var_val = ""
+        data = replace_substr(data, var_val, index_pair[0], index_pair[1])
+    return data
+
+def replace_substr(string, substr, start, end):
+    """
+    replaces the string between start and end indexes with substr
+    start and end are inclusive for substr position
+    """
+    result = ""
+    added = False
+    for i, char in enumerate(string):
+        if i < start or i > end:
+            result += char
+        elif not added:
+            result += substr
+            added = True
+    return result
+
+def get_var_indexes(data):
+    """
+    Returns a list of tuples of index pairs for the start and ends of variables
+    in the passed in string
+    """
+    indexes = []
+    curr_index = []
+    last_was_start = False
+    escaped = False
+    in_var = False
+    for i, char in enumerate(data):
+        if char == "\\" and not in_var:
+            escaped = True
+            continue
+
+        if not in_var and not last_was_start and not escaped and char == "$":
+            last_was_start = True
+            continue
+
+        if last_was_start and char == "{":
+            in_var = True
+            curr_index.append(i - 1)
+
+        if in_var and char == "}":
+            in_var = False
+            curr_index.append(i)
+            indexes.append(curr_index)
+            curr_index = []
+            continue
+
+        escaped = False
+        last_was_start = False
+    return indexes
+
+def get_tokens_obj(data):
+    """
+    Gets a shlex object of tokens
+    """
+    data = filter_vars(data)
+    tokens = shlex.shlex(data, posix = True)
+    tokens.escapedquotes = "'\""
+    tokens.wordchars += "-./${}"
+    tokens.whitespace_split = True
+    return tokens
+
+def get_tokens(data):
+    """
+    Returns fully processed tokens from input string
+    """
+    filtered_data = filter_vars(data)
+    tokens_obj = get_tokens_obj(filtered_data)
+    args = list(tokens_obj)
+    for i, _ in enumerate(args):
+        if "\\" in args[i]:
+            args[i] = args[i].replace("\\", "")
+    return args
 
 _PIPE_REGEX_PATTERN = re.compile(
     # Match escaped double quotes

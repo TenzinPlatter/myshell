@@ -1,36 +1,68 @@
-from myErrors import errorMsg
-import signal
+"""
+Module to run a command using 'run_command' function to run either builtin
+or executable, or run an executable directly with 'run_executable'
+"""
+
 import os
 import builtin
+import settings
+from my_errors import ErrorMsg
 
-def run_command(args):
+
+def run_command(args, return_output_if_executable = False):
+    """
+    Takes in tokens as 'args' from a command line input and runs command
+    """
     program = args[0]
+    # skip program arg
+    for i in range(len(args) - 1):
+        args[i + 1] = os.path.expanduser(args[i + 1])
 
     # returns true if program is a builtin else false and continues
-    if builtin.handle(args) == True:
-        return
-
+    if builtin.is_builtin(program):
+        return builtin.handle(args)
 
     if "/" in program:
-        if not os.path.exists(program):
-            raise errorMsg(f"mysh: no such file or directory: {program}\n")
-
         if os.path.isdir(program):
-            raise errorMsg(f"mysh: is a directory: {program}\n")
+            raise ErrorMsg(f"mysh: is a directory: {program}")
 
         # checks if user has execute permissions
         if not os.access(program, os.X_OK):
-            raise errorMsg(f"mysh: permission denied: {program}\n")
+            raise ErrorMsg(f"mysh: permission denied: {program}")
 
-        run_executable(args)
-        return
+        # adds a newline for some reason
+        return run_executable(args, return_output_if_executable)
 
-    raise errorMsg(f"mysh: command not found: {program}\n")
+    if (path := search_path_for_executable(program)) is None:
+        raise ErrorMsg(f"mysh: command not found: {program}")
+
+    args[0] = path
+    if os.access(path, os.X_OK):
+        return run_executable(args, return_output_if_executable)
+
+    raise ErrorMsg(f"mysh: permission denied: {path}")
+
+def search_path_for_executable(program):
+    """
+    Searches path for an executable, returns None if not found
+    Duped to prevent an import loop with builtin
+    """
+    locs = settings.get_var("PATH").split(os.pathsep)
+    for loc in locs:
+        exec_path = os.path.join(loc, program)
+        if os.path.isfile(exec_path):
+            return exec_path
+    return None
 
 def handle_child_process(child_pid):
-    #INFO: Unused, something about this in the specifications, but can't get
-    # <C-c> to print new line when used on a child process when adjusting
-    # permissions with this
+    """
+    Handles changing child process into terminal foreground group as specified
+    in specifications
+    """
+
+    # doesn't work for child process, and afterwards acts as interrupt for all
+    # SIGINT's
+    # signal.signal(signal.SIGINT, interrupt_handler)
     try:
         os.setpgid(child_pid, child_pid)
     except PermissionError:
@@ -43,16 +75,41 @@ def handle_child_process(child_pid):
     os.tcsetpgrp(file_descriptor, parent_pgid)
     os.close(file_descriptor)
 
-def run_executable(args):
+def run_executable(args, return_output = False):
+    """
+    Runs an executable, path passed in should be absolute
+    If return_output is True then will redirect stdout and return it else 
+    will return None
+    """
     #TODO: fix keyboard interrupt not printing new line for subprocess
+
     child_pid = os.fork()
 
+    # only used if return_output == True
+    r, w = os.pipe()
+
+    # parent process
     if child_pid > 0:
         handle_child_process(child_pid)
-        return
 
-    elif child_pid == 0:
+        # stdout redirect
+        if return_output:
+            os.close(w)
+            with os.fdopen(r) as pipe_read:
+                output = pipe_read.read()
+
+            return output
+
+    # child process
+    else:
+        # stdout redirect
+        if return_output:
+            os.close(r)
+            os.dup2(w, 1)
+            os.close(w)
+
         os.setpgid(0, 0)
         program = args[0]
         os.execv(program, args)
 
+    return None

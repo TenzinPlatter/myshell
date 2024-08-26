@@ -1,10 +1,14 @@
+"""
+Main program file, shell can be run by running this file with python
+"""
+
 import signal
 import os
 import sys
-import shlex
-import vars
-from myErrors import *
+import settings
+from my_errors import ErrorMsg
 from command import run_command
+import parsing
 
 # DO NOT REMOVE THIS FUNCTION!
 # This function is required in order to correctly switch the terminal foreground group to
@@ -15,27 +19,17 @@ def setup_signals() -> None:
     """
     signal.signal(signal.SIGTTOU, signal.SIG_IGN)
 
-def get_tokens_obj():
-    prompt = vars.get("prompt")
-    data = input(f"{prompt} ")
-    tokens = shlex.shlex(data, posix = True)
-    tokens.escapedquotes = "'\""
-    tokens.wordchars += "-./"
-    return tokens
-
-def get_tokens_list(tokens_obj):
-    args = [token for token in tokens_obj]
-    for i in range(len(args)):
-        if args[i].startswith("${") and args[i].endswith("}"):
-            args[i] = vars.get(args[i][2:-1])
-    return args
 
 def main() -> None:
+    """
+    Main function
+    Has infinite loop for user shell input
+    """
     # DO NOT REMOVE THIS FUNCTION CALL!
     setup_signals()
 
     # sets cwd and prompt
-    vars.init()
+    settings.init()
 
     while True:
         try:
@@ -43,25 +37,34 @@ def main() -> None:
         except KeyboardInterrupt:
             print()
             continue
-        except EOFError as e:
-            #TODO: not completely sure if this is right
+        except EOFError:
+            print()
             os._exit(0)
 
 def loop():
+    """
+    Main loop for handling user input can exit when encountering an error, is 
+    recalled by main function
+    """
     while True:
+        prompt = settings.get_var("PROMPT")
+        data = input(prompt)
         try:
-            tokens_obj = get_tokens_obj()
-            args = get_tokens_list(tokens_obj)
-            if (len(args) < 1):
+            args = parsing.get_tokens(data)
+            if len(args) < 1:
                 continue
-            command = args[0]
-            run_command(args)
 
-        except ValueError as e:
+            result = run_command(args)
+            if result is None:
+                continue
+
+            print(result)
+
+        except ValueError:
             sys.stderr.write("mysh: syntax error: unterminated quote\n")
 
-        except errorMsg as e:
-            sys.stderr.write(e.msg)
+        except ErrorMsg as e:
+            sys.stderr.write(e.msg + "\n")
 
 if __name__ == "__main__":
     main()
