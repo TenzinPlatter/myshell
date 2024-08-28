@@ -3,7 +3,10 @@
 
 import os
 import signal
-import sys
+import builtin
+import settings
+
+settings.init()
 
 def run_commands_with_pipes(command_list):
     processes = []
@@ -20,48 +23,53 @@ def run_commands_with_pipes(command_list):
     signal.signal(signal.SIGINT, signal_handler)
     
     # File descriptors for the previous process's output (initially None)
-    last_r = None
-    
-    for command in command_list:
-        r, w = os.pipe()
+    last_out = None
 
+    for args in command_list:
+        # builtin
+        if builtin.is_builtin(args[0]):
+            last_out = builtin.handle(args)
+            continue
+
+        # else
+        if last_out:
+            stdin_pipe = os.pipe()
+            os.write(stdin_pipe[1], last_out.encode())
+            os.close(stdin_pipe[1])
+            stdin = stdin_pipe[0]
+        else:
+            stdin = None
+
+        stdout_pipe = os.pipe()
         pid = os.fork()
 
-        # parent process
-        if pid:
-            processes.append(pid)
+        # child
+        if pid == 0:
+            if stdin:
+                os.dup2(stdin, 0)
+                os.close(stdin)
+            os.dup2(stdout_pipe[1], 1)
+            os.close(stdout_pipe[1])
+            os.close(stdout_pipe[0])
 
-            if last_r:
-                os.close(last_r)
-            if w:
-                os.close(w)
-            last_r = r
-            os.wait()
+            os.execvp(args[0], args)
 
-        # child process
+        # parent
         else:
-            if last_r:
-                os.dup2(last_r, 0)
-                os.close(last_r)
-            if w:
-                os.dup2(w, 1)
-                os.close(w)
+            processes.append(pid)
+            os.close(stdout_pipe[1])
+            if stdin:
+                os.close(stdin)
+            last_out = os.read(stdout_pipe[0], 4096).decode()
+            os.close(stdout_pipe[0])
+            
 
-            os.execvp(command[0], command)
-
-    if last_r:
-        output = os.read(last_r, 4096)
-        os.close(last_r)
-        return output.decode()
+    return last_out
 
 commands = [
-    ['./a.out'],
-    ['echo', 'Hello, World!\nHi World'],
-    ['grep', 'World'],
+        ['echo', 'zsh'],
+        ['which'],
 ]
 
-try:
-    output = run_commands_with_pipes(commands)
-    print("Final Output:", output)
-except:
-    print("caught")
+output = run_commands_with_pipes(commands)
+print(output)
