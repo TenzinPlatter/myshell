@@ -4,7 +4,7 @@ Module to run builtin commands, check if command is a builtin with
 """
 
 import os
-import settings
+import my_vars
 from my_errors import ErrorMsg
 import parsing
 import command
@@ -68,7 +68,7 @@ def search_path_for_executable(program):
     """
     Searches the path for an executable, returns None if not found
     """
-    locs = settings.get_var("PATH").split(os.pathsep)
+    locs = my_vars.get_var("PATH").split(os.pathsep)
     for loc in locs:
         exec_path = os.path.join(loc, program)
         if os.path.isfile(exec_path):
@@ -102,14 +102,14 @@ def var(args):
     if len(args) == 3:
         if args[0] == "-s":
             new_args = parsing.get_tokens(args[2])
-            res = command.run_command(new_args, True)
+            res = command.run_command(new_args)
 
             # removed return not sure if can be deleted
             # look in mysh loop some reason this is needed
             # if is_executable:
             #     res = res.rstrip()
 
-            settings.set_var(args[1], res)
+            my_vars.set_var(args[1], res)
             return
 
         if args[0].startswith("-"):
@@ -122,7 +122,7 @@ def var(args):
         if not args[0].replace("_", "").isalnum():
             raise ErrorMsg(f"var: invalid characters for variable {args[0]}")
 
-    settings.set_var(args[0], args[1])
+    my_vars.set_var(args[0], args[1])
 
 
 def pwd(args):
@@ -130,10 +130,10 @@ def pwd(args):
     Runs the 'pwd' builtin, program name should not be included in args
     """
     if len(args) == 0:
-        return settings.get_var("PWD")
+        return my_vars.get_var("PWD")
 
     if len(args) == 1 and args[0] == "-P":
-        path = os.path.realpath(settings.get_var("PWD"))
+        path = os.path.realpath(my_vars.get_var("PWD"))
         return path
 
     if args[0].startswith("-"):
@@ -146,14 +146,14 @@ def cd(args):
     Runs the 'cd' builtin, program name should not be included in args
     """
     if len(args) == 0:
-        settings.set_var("PWD", os.path.expanduser("~"))
+        my_vars.set_var("PWD", os.path.expanduser("~"))
         return
 
     if len(args) > 1:
         raise ErrorMsg("cd: too many arguments")
 
     path = args[0]
-    cwd = settings.get_var("PWD")
+    cwd = my_vars.get_var("PWD")
     # sets path initially as if it is a relative path, then if not it is overwritten
     new_path = os.path.join(cwd, path)
 
@@ -182,7 +182,7 @@ def cd(args):
 
             new_path = get_parent_path(cwd)
 
-    settings.set_var("PWD", new_path)
+    my_vars.set_var("PWD", new_path)
 
 def get_parent_path(path):
     """

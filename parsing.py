@@ -3,8 +3,36 @@ Module to handle parsing for the shell.
 """
 import re
 import shlex
-import settings
+import my_vars
 from my_errors import ErrorMsg
+
+def split_commands_by_pipe(args):
+    """
+    Returns a list of lists of arguments, split by pipes
+    Throws ErrorMsg if invalid syntax
+    """
+    curr_list = []
+    arg_lists = []
+    for arg in args:
+        # two pipes next to each other
+        if arg == "|" and not curr_list:
+            raise ErrorMsg("mysh: syntax error: expected command after pipe")
+
+        if arg == "|":
+            arg_lists.append(curr_list)
+            curr_list = []
+        else:
+            curr_list.append(arg)
+
+    # adds last args
+    # if empty means there was a trailing pipe
+    if curr_list:
+        arg_lists.append(curr_list)
+    else:
+        raise ErrorMsg("mysh: syntax error: expected command after pipe")
+
+    return arg_lists
+
 
 def filter_vars(data) -> str:
     """
@@ -19,8 +47,8 @@ def filter_vars(data) -> str:
         if not var_name.replace("_", "").isalnum():
             raise ErrorMsg(f"mysh: syntax error: invalid characters for variable {var_name}")
 
-        if settings.var_exists(var_name):
-            var_val = settings.get_var(var_name)
+        if my_vars.var_exists(var_name):
+            var_val = my_vars.get_var(var_name)
         else:
             var_val = ""
         data = replace_substr(data, var_val, index_pair[0], index_pair[1])
@@ -79,7 +107,6 @@ def get_tokens_obj(data):
     """
     Gets a shlex object of tokens
     """
-    data = filter_vars(data)
     tokens = shlex.shlex(data, posix = True)
     tokens.escapedquotes = "'\""
     tokens.wordchars += "-./${}"

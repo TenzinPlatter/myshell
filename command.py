@@ -5,13 +5,14 @@ or executable, or run an executable directly with 'run_executable'
 
 import os
 import builtin
-import settings
+import my_vars
 from my_errors import ErrorMsg
 
-
-def run_command(args, return_output_if_executable = False):
+def run_command(args):
     """
     Takes in tokens as 'args' from a command line input and runs command
+    Always returns output
+    Takes read and write for pipe for use when using pipes
     """
     program = args[0]
     # skip program arg
@@ -30,15 +31,14 @@ def run_command(args, return_output_if_executable = False):
         if not os.access(program, os.X_OK):
             raise ErrorMsg(f"mysh: permission denied: {program}")
 
-        # adds a newline for some reason
-        return run_executable(args, return_output_if_executable)
+        return run_executable(args)
 
     if (path := search_path_for_executable(program)) is None:
         raise ErrorMsg(f"mysh: command not found: {program}")
 
     args[0] = path
     if os.access(path, os.X_OK):
-        return run_executable(args, return_output_if_executable)
+        return run_executable(args)
 
     raise ErrorMsg(f"mysh: permission denied: {path}")
 
@@ -47,7 +47,7 @@ def search_path_for_executable(program):
     Searches path for an executable, returns None if not found
     Duped to prevent an import loop with builtin
     """
-    locs = settings.get_var("PATH").split(os.pathsep)
+    locs = my_vars.get_var("PATH").split(os.pathsep)
     for loc in locs:
         exec_path = os.path.join(loc, program)
         if os.path.isfile(exec_path):
@@ -75,7 +75,7 @@ def handle_child_process(child_pid):
     os.tcsetpgrp(file_descriptor, parent_pgid)
     os.close(file_descriptor)
 
-def run_executable(args, return_output = False):
+def run_executable(args):
     """
     Runs an executable, path passed in should be absolute
     If return_output is True then will redirect stdout and return it else 
@@ -83,33 +83,34 @@ def run_executable(args, return_output = False):
     """
     #TODO: fix keyboard interrupt not printing new line for subprocess
 
-    child_pid = os.fork()
-
-    # only used if return_output == True
     r, w = os.pipe()
 
+
+    pid = os.fork()
+
     # parent process
-    if child_pid > 0:
-        handle_child_process(child_pid)
+    if pid > 0:
+        handle_child_process(pid)
 
         # stdout redirect
-        if return_output:
-            os.close(w)
-            with os.fdopen(r) as pipe_read:
-                output = pipe_read.read()
+        os.close(w)
+        with os.fdopen(r) as pipe_read:
+            output = pipe_read.read()
 
-            return output
+        # lil bit hacky but ???
+        # remove newline added by echo
+        # avoided strip to not remove extra whitespace
+        if args[0].endswith("echo") and output[-1] == "\n":
+            output = output[:-1]
+
+        return output
 
     # child process
     else:
-        # stdout redirect
-        if return_output:
-            os.close(r)
-            os.dup2(w, 1)
-            os.close(w)
+        os.close(r)
+        os.dup2(w, 1)
+        os.close(w)
 
         os.setpgid(0, 0)
         program = args[0]
         os.execv(program, args)
-
-    return None
