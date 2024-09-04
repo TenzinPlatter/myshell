@@ -4,25 +4,46 @@
 import os
 import signal
 from my_errors import ErrorMsg
+import parsing
 
-def run_commands_with_pipes(command_list):
+def check_for_syntax_errors(command_list):
+    last_is_pipe = False
+
+    for args in command_list:
+        for arg in args:
+            # two pipes with nothing inbetween
+            if arg == "|":
+                if last_is_pipe:
+                    raise ErrorMsg("mysh: syntax error: expected command after pipe")
+                else:
+                    last_is_pipe = True
+            else:
+                last_is_pipe = False
+
+    # trailing pipe
+    if last_is_pipe:
+        raise ErrorMsg("mysh: syntax error: expected command after pipe")
+
+def handle(command_list):
     processes = []
     
-    # Set up a signal handler to terminate all processes on Ctrl+C
     def signal_handler(*_):
         for process in processes:
             try:
-                os.kill(process, signal.SIGTERM)
+                os.kill(process, signal.SIGINT)
             except ProcessLookupError:
                 pass
-        raise ErrorMsg("")
 
     signal.signal(signal.SIGINT, signal_handler)
+
+
+    command_list = parsing.split_commands_by_pipe(command_list)
+    check_for_syntax_errors(command_list)
     
-    # File descriptors for the previous process's output (initially None)
+    # file descriptors for the previous process's output (initially None)
     last_r = None
     
-    for command in command_list:
+    for args in command_list:
         r, w = os.pipe()
 
         pid = os.fork()
@@ -47,7 +68,7 @@ def run_commands_with_pipes(command_list):
                 os.dup2(w, 1)
                 os.close(w)
 
-            os.execvp(command[0], command)
+            os.execvp(args[0], args)
 
     if last_r:
         output = os.read(last_r, 4096)

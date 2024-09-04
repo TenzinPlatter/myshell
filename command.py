@@ -5,7 +5,8 @@ or executable, or run an executable directly with 'run_executable'
 
 import os
 import builtin
-import my_vars
+import my_pipes
+import settings
 from my_errors import ErrorMsg
 
 def run_command(args):
@@ -14,6 +15,7 @@ def run_command(args):
     Always returns output
     Takes read and write for pipe for use when using pipes
     """
+
     program = args[0]
     # skip program arg
     for i in range(len(args) - 1):
@@ -22,6 +24,9 @@ def run_command(args):
     # returns true if program is a builtin else false and continues
     if builtin.is_builtin(program):
         return builtin.handle(args)
+
+    if "|" in args:
+        return my_pipes.handle(args)
 
     if "/" in program:
         if os.path.isdir(program):
@@ -47,7 +52,7 @@ def search_path_for_executable(program):
     Searches path for an executable, returns None if not found
     Duped to prevent an import loop with builtin
     """
-    locs = my_vars.get_var("PATH").split(os.pathsep)
+    locs = settings.get_var("PATH").split(os.pathsep)
     for loc in locs:
         exec_path = os.path.join(loc, program)
         if os.path.isfile(exec_path):
@@ -97,12 +102,6 @@ def run_executable(args):
         with os.fdopen(r) as pipe_read:
             output = pipe_read.read()
 
-        # lil bit hacky but ???
-        # remove newline added by echo
-        # avoided strip to not remove extra whitespace
-        if args[0].endswith("echo") and output[-1] == "\n":
-            output = output[:-1]
-
         return output
 
     # child process
@@ -113,4 +112,4 @@ def run_executable(args):
 
         os.setpgid(0, 0)
         program = args[0]
-        os.execv(program, args)
+        os.execve(program, args, settings.get_env())

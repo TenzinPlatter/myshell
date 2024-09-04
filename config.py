@@ -6,7 +6,7 @@ import json
 import sys
 from parsing import filter_vars
 from my_errors import ErrorMsg
-import my_vars
+import settings
 
 def parse_config_file(config_path) -> list | None:
     """
@@ -36,7 +36,7 @@ def parse_config_file(config_path) -> list | None:
             continue
 
         val = filter_vars(val)
-        my_vars.set_var(key, val)
+        settings.set_var(key, val)
 
 def get_pairs(file) -> list:
     """

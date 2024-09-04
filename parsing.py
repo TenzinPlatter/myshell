@@ -3,8 +3,24 @@ Module to handle parsing for the shell.
 """
 import re
 import shlex
-import my_vars
+import settings
 from my_errors import ErrorMsg
+
+def check_line_for_pipe_error(line):
+    last_was_pipe = "|"
+    line.replace(" ", "")
+    for char in line:
+        if char == "|":
+            if last_was_pipe:
+                raise ErrorMsg("mysh: syntax error: expected command after pipe")
+            else:
+                last_was_pipe = True
+        else:
+            last_was_pipe = False
+
+    if last_was_pipe:
+        raise ErrorMsg("mysh: syntax error: expected command after pipe")
+
 
 def split_commands_by_pipe(args):
     """
@@ -47,8 +63,8 @@ def filter_vars(data) -> str:
         if not var_name.replace("_", "").isalnum():
             raise ErrorMsg(f"mysh: syntax error: invalid characters for variable {var_name}")
 
-        if my_vars.var_exists(var_name):
-            var_val = my_vars.get_var(var_name)
+        if settings.var_exists(var_name):
+            var_val = settings.get_var(var_name)
         else:
             var_val = ""
         data = replace_substr(data, var_val, index_pair[0], index_pair[1])
@@ -118,6 +134,7 @@ def get_tokens(data):
     Returns fully processed tokens from input string
     """
     filtered_data = filter_vars(data)
+    check_line_for_pipe_error(filtered_data)
     tokens_obj = get_tokens_obj(filtered_data)
     args = list(tokens_obj)
     for i, _ in enumerate(args):
