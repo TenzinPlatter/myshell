@@ -48,8 +48,8 @@ def get_var(name):
     """
     if name in env_vars:
         return env_vars[name]
-    else:
-        return ""
+
+    return ""
 
 def var_exists(name):
     """
@@ -59,4 +59,7 @@ def var_exists(name):
     return name in env_vars
 
 def get_env():
+    """
+    Returns dictionary of environment variables
+    """
     return env_vars

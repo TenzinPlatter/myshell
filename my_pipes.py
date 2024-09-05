@@ -1,5 +1,6 @@
-# stdin, stdout, stderr
-# 0, 1, 2
+"""
+Module to handle input running commands with pipes
+"""
 
 import os
 import signal
@@ -7,6 +8,9 @@ from my_errors import ErrorMsg
 import parsing
 
 def check_for_syntax_errors(command_list):
+    """
+    Checks the list of arguments for a pipe related syntax error
+    """
     last_is_pipe = False
 
     for args in command_list:
@@ -15,8 +19,8 @@ def check_for_syntax_errors(command_list):
             if arg == "|":
                 if last_is_pipe:
                     raise ErrorMsg("mysh: syntax error: expected command after pipe")
-                else:
-                    last_is_pipe = True
+
+                last_is_pipe = True
             else:
                 last_is_pipe = False
 
@@ -25,8 +29,11 @@ def check_for_syntax_errors(command_list):
         raise ErrorMsg("mysh: syntax error: expected command after pipe")
 
 def handle(command_list):
+    """
+    Closes all open processes on interrupt signal in order to fully exit pipe
+    """
     processes = []
-    
+
     def signal_handler(*_):
         for process in processes:
             try:
@@ -39,10 +46,10 @@ def handle(command_list):
 
     command_list = parsing.split_commands_by_pipe(command_list)
     check_for_syntax_errors(command_list)
-    
+
     # file descriptors for the previous process's output (initially None)
     last_r = None
-    
+
     for args in command_list:
         r, w = os.pipe()
 
@@ -74,3 +81,6 @@ def handle(command_list):
         output = os.read(last_r, 4096)
         os.close(last_r)
         return output.decode()
+
+    # unreachable
+    return None

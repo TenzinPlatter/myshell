@@ -7,14 +7,17 @@ import settings
 from my_errors import ErrorMsg
 
 def check_line_for_pipe_error(line):
+    """
+    Checks line of input for pipe related syntax error
+    """
     last_was_pipe = "|"
     line.replace(" ", "")
     for char in line:
         if char == "|":
             if last_was_pipe:
                 raise ErrorMsg("mysh: syntax error: expected command after pipe")
-            else:
-                last_was_pipe = True
+
+            last_was_pipe = True
         else:
             last_was_pipe = False
 

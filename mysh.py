@@ -6,12 +6,14 @@ import signal
 import os
 import sys
 import settings
-import settings
 from my_errors import ErrorMsg
 from command import run_command
 import parsing
 
 def handle_interrupt(*_):
+    """
+    Handle keyboard interrupt with newline
+    """
     print()
 
 # DO NOT REMOVE THIS FUNCTION!

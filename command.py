@@ -86,8 +86,6 @@ def run_executable(args):
     If return_output is True then will redirect stdout and return it else 
     will return None
     """
-    #TODO: fix keyboard interrupt not printing new line for subprocess
-
     r, w = os.pipe()
 
 
@@ -105,11 +103,11 @@ def run_executable(args):
         return output
 
     # child process
-    else:
-        os.close(r)
-        os.dup2(w, 1)
-        os.close(w)
+    os.close(r)
+    os.dup2(w, 1)
+    os.close(w)
 
-        os.setpgid(0, 0)
-        program = args[0]
-        os.execve(program, args, settings.get_env())
+    os.setpgid(0, 0)
+    program = args[0]
+    os.execve(program, args, settings.get_env())
+    return None

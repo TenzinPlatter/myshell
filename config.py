@@ -23,7 +23,7 @@ def parse_config_file(config_path) -> list | None:
     except ErrorMsg as e:
         sys.stderr.write(e.msg + "\n")
     except FileNotFoundError:
-        return None
+        return
 
     for key, val in var_pairs:
         # error cases
@@ -50,5 +50,5 @@ def get_pairs(file) -> list:
                 data,
                 object_pairs_hook = lambda pairs: [[key, value] for key, value in pairs]
                 )
-    except:
-        raise ErrorMsg("mysh: invalid JSON format for .myshrc")
+    except Exception as e:
+        raise ErrorMsg("mysh: invalid JSON format for .myshrc") from e
