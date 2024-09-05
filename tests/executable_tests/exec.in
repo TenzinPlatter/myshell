@@ -1,0 +1,2 @@
+python3 tests/executable_tests/exec.py
+exit
